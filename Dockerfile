@@ -9,5 +9,6 @@ RUN apt-get update && \
 RUN apt-get install -y jq
 RUN	service docker start
 VOLUME /config
+WORKDIR /config
 EXPOSE 8080
 CMD app -listen-addr 0.0.0.0:8080 -configdir /config
