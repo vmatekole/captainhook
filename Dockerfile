@@ -1,14 +1,15 @@
-FROM golang:1.4.2-onbuild
-RUN apt-get update && \
-	apt-get install -y apt-transport-https ca-certificates && \
- 	apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D && \
- 	echo "deb https://apt.dockerproject.org/repo debian-jessie main" > /etc/apt/sources.list.d/docker.list && \
-	apt-get update && \
-	apt-cache policy docker-engine && \
-	apt-get install -y docker-engine=1.10.3-0~jessie
-RUN apt-get install -y jq
-RUN	service docker start
+FROM golang:1.10
+ADD . /go/src/github.com/bketelsen/captainhook
+WORKDIR /go/src/github.com/bketelsen/captainhook
+RUN go get -u golang.org/x/vgo
+RUN CGO_ENABLED=0 GOOS=linux vgo build -a -installsuffix cgo -o captainhook .
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates
+WORKDIR /root/
+COPY --from=0 /go/src/github.com/bketelsen/captainhook/captainhook .
 VOLUME /config
-WORKDIR /config
-EXPOSE 8080
-CMD app -listen-addr 0.0.0.0:8080 -configdir /config
+CMD ["./captainhook"]
+
+
+

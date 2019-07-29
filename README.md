@@ -1,11 +1,16 @@
 # captainhook
 
+[![Build Status](https://drone.gopheracademy.com/api/badges/bketelsen/captainhook/status.svg)](https://drone.gopheracademy.com/bketelsen/captainhook)
+
 A generic webhook endpoint that runs scripts based on the URL called
 
 This tool was built as part of a CI orchestration process, to be called when
 Docker trusted builds finish.  It explicitly ignores the posted data from the webhook
 because that would be `insecure`, which is `bad`. 
 
+## Shoulders of Giants
+
+Captainhook would not be possible if not for all of the great projects it depends on. Please see [SHOULDERS.md](SHOULDERS.md) to see a list of them.
 
 ## Quick Start
 
@@ -118,6 +123,8 @@ docker run -d -v /some/local/config:/config bketelsen/captainhook
 ```
 
 ## Install
+
+captainhook requires Go 1.10 to build locally with 'vgo' support.
 
 `go get github.com/bketelsen/captainhook`
 
