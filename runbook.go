@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,7 @@ import (
 	"net"
 	"os/exec"
 	"syscall"
+	"bufio"
 )
 
 // runBook represents a collection of scripts.
@@ -86,21 +86,67 @@ func (r *runBook) execute() (*runBookResponse, error) {
 
 func execScript(s script) (result, error) {
 	cmd := exec.Command(s.Command, s.Args...)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	err := cmd.Run()
-	r := result{
-		stdout.String(),
-		stderr.String(),
-		-1,
+
+	// Get the stdout and stderr pipes for real-time streaming
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return result{}, fmt.Errorf("failed to get stdout pipe: %w", err)
 	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return result{}, fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	// Start the command execution
+	err = cmd.Start()
+	if err != nil {
+		return result{}, fmt.Errorf("failed to start script: %w", err)
+	}
+
+	// Create goroutines to stream stdout and stderr to Go's standard output in real-time
+	go func() {
+		scanner := bufio.NewScanner(stdoutPipe)
+		for scanner.Scan() {
+			// Log each line of stdout as it is produced
+			log.Printf("stdout: %s", scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("Error reading stdout: %v", err)
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(stderrPipe)
+		for scanner.Scan() {
+			// Log each line of stderr as it is produced
+			log.Printf("stderr: %s", scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			log.Printf("Error reading stderr: %v", err)
+		}
+	}()
+
+	// Wait for the command to complete
+	err = cmd.Wait()
+
+	// Create the result object
+	r := result{
+		Stdout: "", // Stdout and stderr are already being printed in real-time
+		Stderr: "",
+		StatusCode: -1,
+	}
+
 	if err == nil {
 		r.StatusCode = cmd.ProcessState.Sys().(syscall.WaitStatus).ExitStatus()
+	} else {
+		// If there's an error, log the error message
+		log.Printf("Error executing script %s: %s", s.Command, err.Error())
 	}
+
 	return r, err
 }
+
 
 func getRunBookById(id string) (*runBook, error) {
 	var r = new(runBook)
